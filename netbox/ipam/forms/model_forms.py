@@ -309,10 +309,10 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
         required=False,
         label=_('Make this the primary IP for the device/VM')
     )
-    oob_for_parent = forms.BooleanField(
-        required=False,
-        label=_('Make this the Out-Of-Band IP for the device/VM')
-    )
+    # oob_for_parent = forms.BooleanField(
+    #     required=False,
+    #     label=_('Make this the Out-Of-Band IP for the device/VM')
+    # )
     comments = CommentField()
 
     fieldsets = (
@@ -324,7 +324,7 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
                 FieldSet('vminterface', name=_('Virtual Machine')),
                 FieldSet('fhrpgroup', name=_('FHRP Group')),
             ),
-            'primary_for_parent', 'oob_for_parent', name=_('Assignment')
+            'primary_for_parent', name=_('Assignment')
         ),
         FieldSet('nat_inside', name=_('NAT IP (Inside)')),
     )
@@ -332,7 +332,7 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
     class Meta:
         model = IPAddress
         fields = [
-            'address', 'vrf', 'status', 'role', 'dns_name', 'primary_for_parent', 'oob_for_parent', 'nat_inside', 'tenant_group',
+            'address', 'vrf', 'status', 'role', 'dns_name', 'primary_for_parent', 'nat_inside', 'tenant_group',
             'tenant', 'description', 'comments', 'tags',
         ]
 
