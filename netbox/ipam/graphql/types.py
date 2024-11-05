@@ -148,7 +148,7 @@ class IPRangeType(NetBoxObjectType):
     vrf: Annotated["VRFType", strawberry.lazy('ipam.graphql.types')] | None
     tenant: Annotated["TenantType", strawberry.lazy('tenancy.graphql.types')] | None
     role: Annotated["RoleType", strawberry.lazy('ipam.graphql.types')] | None
-
+    parent: Optional[str]
 
 @strawberry_django.type(
     models.Prefix,
