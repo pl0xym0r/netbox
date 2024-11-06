@@ -503,13 +503,13 @@ class IPRangeFilterSet(TenancyFilterSet, NetBoxModelFilterSet):
         null_value=None
     )
     parent = MultiValueCharFilter(
-        method='search_by_parent',
+        method='filter_parent',
         label=_('Parent prefix'),
     )
 
     class Meta:
         model = IPRange
-        fields = ('id', 'mark_utilized', 'size', 'description', 'parent')
+        fields = ('id', 'mark_utilized', 'size', 'description')
 
     def search(self, queryset, name, value):
         if not value.strip():
@@ -540,7 +540,7 @@ class IPRangeFilterSet(TenancyFilterSet, NetBoxModelFilterSet):
         except ValidationError:
             return queryset.none()
 
-    def search_by_parent(self, queryset, name, value):
+    def filter_parent(self, queryset, name, value):
         if not value:
             return queryset
         q = Q()
