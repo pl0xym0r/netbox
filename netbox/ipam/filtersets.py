@@ -503,6 +503,7 @@ class IPRangeFilterSet(TenancyFilterSet, NetBoxModelFilterSet):
         null_value=None
     )
     parent = MultiValueCharFilter(
+        queryset=IPRange.objects.all(),
         method='filter_parent',
         label=_('Parent prefix'),
     )
