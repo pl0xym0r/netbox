@@ -6,7 +6,6 @@ from timezone_field import TimeZoneFormField
 from dcim.choices import *
 from dcim.constants import *
 from dcim.models import *
-from virtualization.models import Cluster
 from extras.models import ConfigTemplate
 from ipam.models import ASN, VLAN, VLANGroup, VRF
 from netbox.forms import NetBoxModelBulkEditForm
@@ -16,8 +15,9 @@ from utilities.forms import BulkEditForm, add_blank_choice, form_from_model
 from utilities.forms.fields import ColorField, CommentField, DynamicModelChoiceField, DynamicModelMultipleChoiceField
 from utilities.forms.rendering import FieldSet, InlineFields
 from utilities.forms.widgets import BulkEditNullBooleanSelect, NumberWithOptions
-from wireless.models import WirelessLAN, WirelessLANGroup
+from virtualization.models import Cluster
 from wireless.choices import WirelessRoleChoices
+from wireless.models import WirelessLAN, WirelessLANGroup
 
 __all__ = (
     'CableBulkEditForm',
@@ -741,7 +741,7 @@ class DeviceBulkEditForm(NetBoxModelBulkEditForm):
         FieldSet('cluster', name=_('Virtualization')),
     )
     nullable_fields = (
-        'location', 'tenant', 'platform', 'serial', 'airflow', 'description', 'comments',
+        'location', 'tenant', 'platform', 'serial', 'airflow', 'description', 'cluster', 'comments',
     )
 
 
