@@ -309,6 +309,10 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
         required=False,
         label=_('Make this the primary IP for the device/VM')
     )
+    oob_for_parent = forms.BooleanField(
+        required=False,
+        label=_('Make this the Out-of-band IP for the device')
+    )
     comments = CommentField()
 
     fieldsets = (
@@ -320,7 +324,7 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
                 FieldSet('vminterface', name=_('Virtual Machine')),
                 FieldSet('fhrpgroup', name=_('FHRP Group')),
             ),
-            'primary_for_parent', name=_('Assignment')
+            'primary_for_parent', 'oob_for_parent', name=_('Assignment')
         ),
         FieldSet('nat_inside', name=_('NAT IP (Inside)')),
     )
@@ -328,8 +332,8 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
     class Meta:
         model = IPAddress
         fields = [
-            'address', 'vrf', 'status', 'role', 'dns_name', 'primary_for_parent', 'nat_inside', 'tenant_group',
-            'tenant', 'description', 'comments', 'tags',
+            'address', 'vrf', 'status', 'role', 'dns_name', 'primary_for_parent', 'oob_for_parent', 'nat_inside',
+            'tenant_group', 'tenant', 'description', 'comments', 'tags',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -348,7 +352,7 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
 
         super().__init__(*args, **kwargs)
 
-        # Initialize primary_for_parent if IP address is already assigned
+        # Initialize primary_for_parent or oob_for_parent if IP address is already assigned
         if self.instance.pk and self.instance.assigned_object:
             parent = getattr(self.instance.assigned_object, 'parent_object', None)
             if parent and (
@@ -365,6 +369,9 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
                 self.fields['vminterface'].widget.add_query_params({
                     'virtual_machine_id': instance.assigned_object.virtual_machine.pk,
                 })
+
+            if parent and (parent.oob_ip_id == self.instance.pk):
+                self.initial['oob_for_parent'] = True
 
         # Disable object assignment fields if the IP address is designated as primary
         if self.initial.get('primary_for_parent'):
@@ -389,6 +396,10 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
                 raise ValidationError(
                     _("Cannot reassign IP address while it is designated as the primary IP for the parent object")
                 )
+            elif self.instance.pk and self.instance.assigned_object and self.cleaned_data['oob_for_parent'] and assigned_object != self.instance.assigned_object:
+                raise ValidationError(
+                    _("Cannot reassign IP address while it is designated as the Out-Of-Band IP for the parent object")
+                )
             self.instance.assigned_object = assigned_object
         else:
             self.instance.assigned_object = None
@@ -398,6 +409,13 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
         if self.cleaned_data.get('primary_for_parent') and not interface:
             self.add_error(
                 'primary_for_parent', _("Only IP addresses assigned to an interface can be designated as primary IPs.")
+            )
+
+        # OOB IP assignment is only available if device interface has been assigned.
+        interface = self.cleaned_data.get('interface')
+        if self.cleaned_data.get('oob_for_parent') and not interface:
+            self.add_error(
+                'oob_for_parent', _("Only IP addresses assigned to device interface can be designated as Out-of-band IP.")
             )
 
     def save(self, *args, **kwargs):
@@ -419,6 +437,17 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
                 parent.save()
             elif ipaddress.address.version == 6 and parent.primary_ip6 == ipaddress:
                 parent.primary_ip6 = None
+                parent.save()
+
+        # Assign/clear this IPAddress as the OOB for the associated Device
+        if type(interface) is Interface:
+            parent = interface.parent_object
+            parent.snapshot()
+            if self.cleaned_data['oob_for_parent']:
+                parent.oob_ip = ipaddress
+                parent.save()
+            elif parent.oob_ip == ipaddress:
+                parent.oob_ip = None
                 parent.save()
 
         return ipaddress
