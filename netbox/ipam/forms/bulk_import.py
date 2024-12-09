@@ -327,8 +327,8 @@ class IPAddressImportForm(NetBoxModelImportForm):
         required=False
     )
     is_oob = forms.BooleanField(
-        label=_('Is Out-Of-Band'),
-        help_text=_('Make this the Out-Of-Band IP for the assigned device'),
+        label=_('Is out-of-band'),
+        help_text=_('Designate this as the out-of-band IP address for the assigned device'),
         required=False
     )
 
@@ -376,7 +376,7 @@ class IPAddressImportForm(NetBoxModelImportForm):
             })
         if is_oob and virtual_machine:
             raise forms.ValidationError({
-                "is_oob": _("Cannot set out-of-band IP on VM")
+                "is_oob": _("Cannot set out-of-band IP for virtual machines")
             })
         if is_primary and not interface:
             raise forms.ValidationError({
