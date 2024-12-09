@@ -311,7 +311,7 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
     )
     oob_for_parent = forms.BooleanField(
         required=False,
-        label=_('Make this the Out-of-band IP for the device')
+        label=_('Make this the out-of-band IP for the device')
     )
     comments = CommentField()
 
@@ -352,7 +352,7 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
 
         super().__init__(*args, **kwargs)
 
-        # Initialize primary_for_parent or oob_for_parent if IP address is already assigned
+        # Initialize parent object & fields if IP address is already assigned
         if self.instance.pk and self.instance.assigned_object:
             parent = getattr(self.instance.assigned_object, 'parent_object', None)
             if parent and (
@@ -360,6 +360,9 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
                 self.instance.address.version == 6 and parent.primary_ip6_id == self.instance.pk
             ):
                 self.initial['primary_for_parent'] = True
+
+            if parent and (parent.oob_ip_id == self.instance.pk):
+                self.initial['oob_for_parent'] = True
 
             if type(instance.assigned_object) is Interface:
                 self.fields['interface'].widget.add_query_params({
@@ -369,9 +372,6 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
                 self.fields['vminterface'].widget.add_query_params({
                     'virtual_machine_id': instance.assigned_object.virtual_machine.pk,
                 })
-
-            if parent and (parent.oob_ip_id == self.instance.pk):
-                self.initial['oob_for_parent'] = True
 
         # Disable object assignment fields if the IP address is designated as primary
         if self.initial.get('primary_for_parent'):
@@ -392,14 +392,15 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
             })
         elif selected_objects:
             assigned_object = self.cleaned_data[selected_objects[0]]
-            if self.instance.pk and self.instance.assigned_object and self.cleaned_data['primary_for_parent'] and assigned_object != self.instance.assigned_object:
-                raise ValidationError(
-                    _("Cannot reassign IP address while it is designated as the primary IP for the parent object")
-                )
-            elif self.instance.pk and self.instance.assigned_object and self.cleaned_data['oob_for_parent'] and assigned_object != self.instance.assigned_object:
-                raise ValidationError(
-                    _("Cannot reassign IP address while it is designated as the Out-Of-Band IP for the parent object")
-                )
+            if self.instance.pk and self.instance.assigned_object and assigned_object != self.instance.assigned_object:
+                if self.cleaned_data['primary_for_parent']:
+                    raise ValidationError(
+                        _("Cannot reassign primary IP address for the parent device/VM")
+                    )
+                if self.cleaned_data['oob_for_parent']:
+                    raise ValidationError(
+                        _("Cannot reassign out-of-Band IP address for the parent device")
+                    )
             self.instance.assigned_object = assigned_object
         else:
             self.instance.assigned_object = None
@@ -415,7 +416,10 @@ class IPAddressForm(TenancyForm, NetBoxModelForm):
         interface = self.cleaned_data.get('interface')
         if self.cleaned_data.get('oob_for_parent') and not interface:
             self.add_error(
-                'oob_for_parent', _("Only IP addresses assigned to device interface can be designated as Out-of-band IP.")
+                'oob_for_parent', _(
+                    "Only IP addresses assigned to a device interface can be designated as the out-of-band IP for a "
+                    "device."
+                )
             )
 
     def save(self, *args, **kwargs):
